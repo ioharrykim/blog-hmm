@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { savePageAction } from "@/app/admin/actions";
 import { getPageContent } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,7 @@ export default async function EditPage({ params }: Props) {
     <main className="editor">
       <div className="page__kicker">Page · {page.slug}</div>
       <h1 className="page__title">페이지 편집</h1>
-      <form className="editor-form" action={savePageAction}>
+      <form className="editor-form" action="/admin/pages/save" method="post">
         <input type="hidden" name="slug" value={page.slug} />
         <div className="field">
           <label htmlFor="kicker">Kicker</label>

@@ -1,5 +1,3 @@
-import { uploadMediaAction } from "@/app/admin/actions";
-
 export const dynamic = "force-dynamic";
 
 export default async function MediaPage({
@@ -14,7 +12,7 @@ export default async function MediaPage({
     <main className="editor">
       <div className="page__kicker">Media</div>
       <h1 className="page__title">이미지 업로드</h1>
-      <form className="editor-form" action={uploadMediaAction} encType="multipart/form-data">
+      <form className="editor-form" action="/admin/media/upload" method="post" encType="multipart/form-data">
         <div className="field">
           <label htmlFor="image">Image</label>
           <input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" required />

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { deletePostAction, logoutAction } from "@/app/admin/actions";
 import { formatDate } from "@/lib/date";
 import { getAllPosts, postMetrics } from "@/lib/posts";
 
@@ -28,7 +27,7 @@ export default async function AdminPage() {
           <Link className="button button--primary" href="/admin/posts/new">
             새 글 →
           </Link>
-          <form action={logoutAction}>
+          <form action="/admin/logout" method="post">
             <button className="button button--text" type="submit">
               로그아웃
             </button>
@@ -75,7 +74,7 @@ export default async function AdminPage() {
                     보기
                   </Link>
                 ) : null}
-                <form action={deletePostAction}>
+                <form action="/admin/posts/delete" method="post">
                   <input type="hidden" name="id" value={post.id} />
                   <button className="button button--danger" type="submit">
                     삭제

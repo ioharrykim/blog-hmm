@@ -1,11 +1,10 @@
-import { savePostAction } from "@/app/admin/actions";
 import { CategoryInput } from "@/app/admin/posts/category-input";
 import { toInputDateTime } from "@/lib/date";
 import type { Post } from "@/lib/posts";
 
 export function PostForm({ post, categories }: { post?: Post; categories: string[] }) {
   return (
-    <form className="editor-form" action={savePostAction} encType="multipart/form-data">
+    <form className="editor-form" action="/admin/posts/save" method="post" encType="multipart/form-data">
       {post ? <input type="hidden" name="id" value={post.id} /> : null}
 
       <div className="field field--title">
