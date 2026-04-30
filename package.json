@@ -1,0 +1,28 @@
+{
+  "name": "hyunmin-blog",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "NODE_OPTIONS=--no-warnings next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:reset": "node scripts/reset-db.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.3",
+    "next": "latest",
+    "postgres": "^3.4.9",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-markdown": "latest",
+    "remark-gfm": "latest",
+    "server-only": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}
