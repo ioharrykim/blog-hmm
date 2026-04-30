@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { NeonQueryFunction } from "@neondatabase/serverless";
+import { unstable_cache } from "next/cache";
 import { readingMinutes } from "@/lib/date";
 import { slugify } from "@/lib/slug";
 
@@ -184,7 +185,7 @@ const seedPages: PageContentInput[] = [
   }
 ];
 
-const publicDbTimeoutMs = Number(process.env.PUBLIC_DB_TIMEOUT_MS || 3500);
+const publicDbTimeoutMs = Number(process.env.PUBLIC_DB_TIMEOUT_MS || 1200);
 
 function usePostgres() {
   return Boolean(process.env.DATABASE_URL);
@@ -403,7 +404,7 @@ function fallbackPageContent(slug: string) {
   };
 }
 
-function tagCounts(posts: Post[]) {
+export function getTagCounts(posts: Post[]) {
   const counts = new Map<string, number>();
   for (const post of posts) {
     for (const tag of post.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
@@ -413,7 +414,7 @@ function tagCounts(posts: Post[]) {
     .sort((a, b) => a.tag.localeCompare(b.tag, "ko"));
 }
 
-function archivesFromPosts(posts: Post[], category?: string | null) {
+export function getArchivesFromPosts(posts: Post[], category?: string | null) {
   const groups = new Map<string, Post[]>();
   const filtered = category ? posts.filter((post) => post.tags.includes(decodeURIComponent(category))) : posts;
 
@@ -629,11 +630,11 @@ export async function deletePost(id: string) {
 }
 
 export async function getPublishedTags() {
-  return tagCounts(await getPublishedPosts());
+  return getTagCounts(await getPublishedPosts());
 }
 
 export async function getAllCategories() {
-  return tagCounts(await getAllPosts());
+  return getTagCounts(await getAllPosts());
 }
 
 export async function getPostsByTag(tag: string) {
@@ -641,29 +642,41 @@ export async function getPostsByTag(tag: string) {
 }
 
 export async function getArchives(category?: string | null) {
-  return archivesFromPosts(await getPublishedPosts(), category);
+  return getArchivesFromPosts(await getPublishedPosts(), category);
 }
 
+const getCachedPublishedPosts = unstable_cache(async () => getPublishedPosts(), ["public-published-posts"], {
+  revalidate: 300,
+  tags: ["public-posts"]
+});
+
+const getCachedPageContent = unstable_cache(async (slug: string) => getPageContent(slug), ["public-page-content"], {
+  revalidate: 300,
+  tags: ["public-pages"]
+});
+
 export async function getPublicPublishedPosts() {
-  return publicFallback("published posts", fallbackPublishedPosts(), getPublishedPosts);
+  return publicFallback("published posts", fallbackPublishedPosts(), getCachedPublishedPosts);
 }
 
 export async function getPublicPublishedTags() {
-  return publicFallback("published tags", tagCounts(fallbackPublishedPosts()), getPublishedTags);
+  return getTagCounts(await getPublicPublishedPosts());
 }
 
 export async function getPublicPostsByTag(tag: string) {
   const fallback = fallbackPublishedPosts().filter((post) => post.tags.includes(decodeURIComponent(tag)));
-  return publicFallback("tagged posts", fallback, () => getPostsByTag(tag));
+  const posts = await getPublicPublishedPosts();
+  return posts.filter((post) => post.tags.includes(decodeURIComponent(tag))) || fallback;
 }
 
 export async function getPublicPostBySlug(slug: string) {
   const fallback = fallbackPublishedPosts().find((post) => post.slug === decodeURIComponent(slug)) || null;
-  return publicFallback("post detail", fallback, () => getPostBySlug(slug));
+  const posts = await getPublicPublishedPosts();
+  return posts.find((post) => post.slug === decodeURIComponent(slug)) || fallback;
 }
 
 export async function getPublicArchives(category?: string | null) {
-  return publicFallback("archives", archivesFromPosts(fallbackPublishedPosts(), category), () => getArchives(category));
+  return getArchivesFromPosts(await getPublicPublishedPosts(), category);
 }
 
 async function upsertSqlitePage(input: PageContentInput, database?: SqliteDatabase) {
@@ -739,7 +752,7 @@ export async function getPageContent(slug: string) {
 }
 
 export async function getPublicPageContent(slug: string) {
-  return publicFallback("page content", fallbackPageContent(slug), () => getPageContent(slug));
+  return publicFallback("page content", fallbackPageContent(slug), () => getCachedPageContent(slug));
 }
 
 export async function upsertPageContent(input: PageContentInput) {

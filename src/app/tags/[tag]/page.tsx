@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostRow } from "@/components/post-row";
 import { pageMetadata } from "@/lib/metadata";
-import { getPublicPostsByTag, getPublicPublishedTags } from "@/lib/posts";
+import { getPublicPublishedPosts, getTagCounts } from "@/lib/posts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type Props = {
   params: Promise<{ tag: string }>;
 };
+
+export async function generateStaticParams() {
+  const posts = await getPublicPublishedPosts();
+  return getTagCounts(posts).map(({ tag }) => ({ tag }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { tag } = await params;
@@ -23,10 +28,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TagPage({ params }: Props) {
   const { tag } = await params;
   const decoded = decodeURIComponent(tag);
-  const knownTags = (await getPublicPublishedTags()).map((item) => item.tag);
+  const allPosts = await getPublicPublishedPosts();
+  const knownTags = getTagCounts(allPosts).map((item) => item.tag);
   if (!knownTags.includes(decoded)) notFound();
 
-  const posts = await getPublicPostsByTag(decoded);
+  const posts = allPosts.filter((post) => post.tags.includes(decoded));
 
   return (
     <main className="home">

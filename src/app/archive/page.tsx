@@ -1,8 +1,8 @@
 import { PostRow } from "@/components/post-row";
 import { pageMetadata } from "@/lib/metadata";
-import { getPublicArchives, getPublicPublishedTags } from "@/lib/posts";
+import { getArchivesFromPosts, getPublicPublishedPosts, getTagCounts } from "@/lib/posts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 export const metadata = pageMetadata({
   title: "Archive",
   description: "hmmhmm 글 아카이브.",
@@ -16,8 +16,9 @@ export default async function ArchivePage({
 }) {
   const params = await searchParams;
   const selectedCategory = params.category ? decodeURIComponent(params.category) : null;
-  const archives = await getPublicArchives(selectedCategory);
-  const categories = await getPublicPublishedTags();
+  const posts = await getPublicPublishedPosts();
+  const archives = getArchivesFromPosts(posts, selectedCategory);
+  const categories = getTagCounts(posts);
 
   return (
     <main className="home">

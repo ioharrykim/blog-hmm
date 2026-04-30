@@ -6,14 +6,19 @@ import { Markdown } from "@/components/markdown";
 import { TagList } from "@/components/tag-list";
 import { formatDate, readingMinutes } from "@/lib/date";
 import { pageMetadata } from "@/lib/metadata";
-import { getPublicPostBySlug } from "@/lib/posts";
+import { getPublicPostBySlug, getPublicPublishedPosts } from "@/lib/posts";
 import { absoluteUrl, ogImageUrl, site } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateStaticParams() {
+  const posts = await getPublicPublishedPosts();
+  return posts.map((post) => ({ slug: post.slug }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;

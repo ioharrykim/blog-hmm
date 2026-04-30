@@ -2,7 +2,7 @@ import { PostRow } from "@/components/post-row";
 import { pageMetadata } from "@/lib/metadata";
 import { getPublicPublishedPosts } from "@/lib/posts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 export const metadata = pageMetadata({
   title: "Writing",
   description: "hmmhmm에 발행된 개인 에세이 목록.",

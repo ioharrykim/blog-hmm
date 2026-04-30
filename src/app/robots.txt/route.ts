@@ -1,6 +1,6 @@
 import { absoluteUrl, siteUrl } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export function GET() {
   const body = [

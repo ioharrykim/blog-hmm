@@ -2,11 +2,12 @@ import { getPublicPublishedPosts } from "@/lib/posts";
 import { absoluteUrl, site } from "@/lib/site";
 import { escapeXml } from "@/lib/xml";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function GET() {
   const posts = await getPublicPublishedPosts();
   const body = `<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${escapeXml(site.name)}</title>

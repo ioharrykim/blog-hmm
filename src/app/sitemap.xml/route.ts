@@ -1,14 +1,14 @@
-import { getPublicPublishedPosts, getPublicPublishedTags } from "@/lib/posts";
+import { getPublicPublishedPosts, getTagCounts } from "@/lib/posts";
 import { absoluteUrl } from "@/lib/site";
 import { escapeXml } from "@/lib/xml";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function GET() {
   const now = new Date().toISOString();
   const staticRoutes = ["/", "/posts", "/archive", "/about", "/privacy", "/contact"];
   const posts = await getPublicPublishedPosts();
-  const tags = await getPublicPublishedTags();
+  const tags = getTagCounts(posts);
 
   const urls = [
     ...staticRoutes.map((path) => ({ loc: absoluteUrl(path), lastmod: now, priority: path === "/" ? "1.0" : "0.7" })),
