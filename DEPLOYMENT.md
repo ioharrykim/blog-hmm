@@ -71,6 +71,38 @@
 9. Vercel Domains에서 새 도메인을 검색하고 구매합니다.
 10. 구매한 도메인을 Project Settings > Domains에서 현재 프로젝트에 연결합니다.
 
+## Neon 설정 상세
+
+현재 Neon 첫 프로젝트 생성 화면에서는 아래처럼 선택합니다.
+
+- **Project name:** `blog-hmm` 또는 `hmmhmm-production`
+- **Postgres version:** `17`
+- **Region:** 한국 방문자가 주 대상이면 Tokyo/Seoul 계열이 보일 때 그쪽을 고릅니다. 현재 화면처럼 Singapore만 보이면 `AWS Asia Pacific 1 (Singapore)`로 시작해도 충분합니다.
+- **Neon Auth:** 끕니다. 이 블로그는 이미 `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` 기반의 관리자 로그인을 가지고 있어서 Neon Auth가 필요하지 않습니다.
+
+프로젝트를 만든 뒤:
+
+1. Neon 프로젝트 Dashboard에서 **Connect**를 누릅니다.
+2. Branch는 `production`, Database는 기본 `neondb`, Role은 기본 owner role을 선택합니다.
+3. Vercel/Serverless 환경이므로 **Connection pooling**을 켭니다. 복사한 URL의 host에 `-pooler`가 들어가 있으면 pooled connection string입니다.
+4. connection string은 `postgresql://...?...sslmode=require` 형태여야 합니다.
+5. Vercel Project Settings > Environment Variables에 `DATABASE_URL`로 추가합니다.
+6. Environment는 최소 `Production`을 선택합니다. Preview 배포에서도 관리자 기능을 테스트하고 싶으면 `Preview`도 함께 선택합니다.
+7. 환경변수 추가 후 기존 배포에는 자동 적용되지 않으므로 **Deployments > 최신 배포 > Redeploy**를 실행합니다.
+
+이 앱은 별도 migration 명령이 없습니다. 배포 후 첫 요청이 들어오면 `posts`, `pages` 테이블과 기본 샘플 글/About 데이터를 자동 생성합니다. 확인은 `/admin` 로그인 후 글을 하나 저장하고 새로고침해도 그대로 남는지 보면 됩니다.
+
+## Vercel Blob 설정 상세
+
+1. Vercel 프로젝트 Dashboard에서 **Storage** 탭으로 갑니다.
+2. **Create Database** 또는 **Create Store**에서 **Blob**을 선택합니다.
+3. 블로그 본문 이미지는 공개 이미지이므로 Public Blob Store로 시작합니다.
+4. Store name은 `blog-hmm-media`처럼 짓습니다.
+5. 연결할 환경은 `Production`을 선택합니다. Preview에서도 업로드 테스트를 하고 싶으면 `Preview`도 선택합니다.
+6. 같은 Vercel 프로젝트에 Blob을 만들면 `BLOB_READ_WRITE_TOKEN` 환경변수가 자동으로 추가됩니다.
+7. 환경변수 추가 후 다시 Redeploy합니다.
+8. `/admin/media`에서 5 MB 이하의 jpg, png, webp, gif, svg 파일을 업로드해 URL이 나오는지 확인합니다.
+
 ## 필수 환경 변수
 
 - `NEXT_PUBLIC_SITE_URL=https://구매한도메인`
@@ -85,8 +117,7 @@
 - `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=Search Console verification 값`
 - `NEXT_PUBLIC_ADSENSE_ENABLED=true`
 - `NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-...`
-- `NEXT_PUBLIC_ADSENSE_SLOT_INLINE=...`
-- `NEXT_PUBLIC_ADSENSE_SLOT_FOOTER=...`
+- `NEXT_PUBLIC_ADSENSE_ARTICLE_SLOT=...`
 
 ## Vercel에서 새 도메인 구매
 
