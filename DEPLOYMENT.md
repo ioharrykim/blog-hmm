@@ -155,3 +155,20 @@ Vercel에서 구매한 도메인은 DNS 설정이 가장 단순합니다. 외부
 3. 인기 글의 OG 이미지와 본문 이미지를 압축하고, 대형 이미지는 별도 썸네일을 둡니다.
 4. Neon connection pooling을 사용하고, tag/status/publishedAt/slug 인덱스를 유지합니다.
 5. 월 500만 PV 이상에서는 Vercel Enterprise 또는 별도 CDN/이미지 최적화 전략을 비교합니다.
+
+## 문제 해결
+
+### `This page couldn't load` 또는 `CONNECT_TIMEOUT`
+
+Vercel Runtime Logs에 `write CONNECT_TIMEOUT ...neon.tech:5432`가 보이면 앱 서버가 Neon Postgres에 접속하지 못한 것입니다.
+
+확인 순서:
+
+1. Vercel Project Settings > Environment Variables에서 `DATABASE_URL`이 `Production`에 들어가 있는지 확인합니다.
+2. 값 앞뒤에 따옴표나 공백이 없는지 확인합니다.
+3. Neon Dashboard > Connect에서 URL을 다시 복사합니다.
+4. pooled URL이 계속 타임아웃되면 초기에는 direct URL, 즉 host에 `-pooler`가 없는 connection string으로 바꿔 테스트합니다.
+5. Neon 프로젝트가 삭제/일시정지/권한 제한 상태가 아닌지 확인합니다.
+6. 환경변수 변경 후에는 반드시 Vercel에서 Redeploy합니다.
+
+`BLOB_READ_WRITE_TOKEN`이 없어도 메인 화면은 떠야 합니다. 이 값은 `/admin/media` 이미지 업로드에 필요합니다.

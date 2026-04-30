@@ -254,40 +254,45 @@ async function getPostgres() {
   }
 
   if (!pgInitialized) {
-    pgInitialized = true;
-    await pg`
-      CREATE TABLE IF NOT EXISTS posts (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        excerpt TEXT NOT NULL DEFAULT '',
-        body TEXT NOT NULL DEFAULT '',
-        tags TEXT NOT NULL DEFAULT '[]',
-        status TEXT NOT NULL CHECK(status IN ('draft', 'published')),
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        published_at TEXT,
-        seo_title TEXT,
-        seo_description TEXT,
-        og_image TEXT
-      )
-    `;
-    await pg`CREATE INDEX IF NOT EXISTS posts_status_published_idx ON posts(status, published_at DESC)`;
-    await pg`CREATE INDEX IF NOT EXISTS posts_slug_idx ON posts(slug)`;
-    await pg`
-      CREATE TABLE IF NOT EXISTS pages (
-        slug TEXT PRIMARY KEY,
-        kicker TEXT NOT NULL DEFAULT '',
-        title TEXT NOT NULL,
-        lede TEXT NOT NULL DEFAULT '',
-        body TEXT NOT NULL DEFAULT '',
-        seo_title TEXT,
-        seo_description TEXT,
-        updated_at TEXT NOT NULL
-      )
-    `;
-    await seedPostgresIfEmpty(pg);
-    await seedPostgresPagesIfEmpty(pg);
+    try {
+      await pg`
+        CREATE TABLE IF NOT EXISTS posts (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          slug TEXT NOT NULL UNIQUE,
+          excerpt TEXT NOT NULL DEFAULT '',
+          body TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL CHECK(status IN ('draft', 'published')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          published_at TEXT,
+          seo_title TEXT,
+          seo_description TEXT,
+          og_image TEXT
+        )
+      `;
+      await pg`CREATE INDEX IF NOT EXISTS posts_status_published_idx ON posts(status, published_at DESC)`;
+      await pg`CREATE INDEX IF NOT EXISTS posts_slug_idx ON posts(slug)`;
+      await pg`
+        CREATE TABLE IF NOT EXISTS pages (
+          slug TEXT PRIMARY KEY,
+          kicker TEXT NOT NULL DEFAULT '',
+          title TEXT NOT NULL,
+          lede TEXT NOT NULL DEFAULT '',
+          body TEXT NOT NULL DEFAULT '',
+          seo_title TEXT,
+          seo_description TEXT,
+          updated_at TEXT NOT NULL
+        )
+      `;
+      await seedPostgresIfEmpty(pg);
+      await seedPostgresPagesIfEmpty(pg);
+      pgInitialized = true;
+    } catch (error) {
+      pgInitialized = false;
+      throw error;
+    }
   }
 
   return pg;
@@ -365,11 +370,16 @@ async function ensureUniqueSlug(base: string, currentId?: string) {
   let index = 2;
 
   while (true) {
-    const row = usePostgres()
-      ? ((await (await getPostgres())`SELECT id FROM posts WHERE slug = ${candidate} LIMIT 1`)[0] as { id: string } | undefined)
-      : ((await getSqliteDb()).prepare("SELECT id FROM posts WHERE slug = ? LIMIT 1").get(candidate) as
-          | { id: string }
-          | undefined);
+    let row: { id: string } | undefined;
+
+    if (usePostgres()) {
+      const db = await getPostgres();
+      row = (await db<{ id: string }[]>`SELECT id FROM posts WHERE slug = ${candidate} LIMIT 1`)[0];
+    } else {
+      row = (await getSqliteDb()).prepare("SELECT id FROM posts WHERE slug = ? LIMIT 1").get(candidate) as
+        | { id: string }
+        | undefined;
+    }
 
     if (!row || row.id === currentId) return candidate;
     candidate = `${base}-${index}`;
@@ -481,44 +491,59 @@ export async function upsertPost(input: PostInput) {
 }
 
 export async function getAllPosts() {
-  const rows = usePostgres()
-    ? ((await (await getPostgres())`SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC`) as Row[])
-    : ((await getSqliteDb())
-        .prepare("SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC")
-        .all() as Row[]);
+  let rows: Row[];
+  if (usePostgres()) {
+    const db = await getPostgres();
+    rows = await db<Row[]>`SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC`;
+  } else {
+    rows = (await getSqliteDb())
+      .prepare("SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC")
+      .all() as Row[];
+  }
   return rows.map(normalizeRow);
 }
 
 export async function getPublishedPosts() {
-  const rows = usePostgres()
-    ? ((await (await getPostgres())`SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC`) as Row[])
-    : ((await getSqliteDb())
-        .prepare("SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC")
-        .all() as Row[]);
+  let rows: Row[];
+  if (usePostgres()) {
+    const db = await getPostgres();
+    rows = await db<Row[]>`SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC`;
+  } else {
+    rows = (await getSqliteDb())
+      .prepare("SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC")
+      .all() as Row[];
+  }
   return rows.map(normalizeRow);
 }
 
 export async function getPostBySlug(slug: string) {
-  const row = usePostgres()
-    ? ((await (await getPostgres())`SELECT * FROM posts WHERE slug = ${slug} AND status = 'published' LIMIT 1`)[0] as
-        | Row
-        | undefined)
-    : ((await getSqliteDb())
-        .prepare("SELECT * FROM posts WHERE slug = ? AND status = 'published' LIMIT 1")
-        .get(slug) as Row | undefined);
+  let row: Row | undefined;
+  if (usePostgres()) {
+    const db = await getPostgres();
+    row = (await db<Row[]>`SELECT * FROM posts WHERE slug = ${slug} AND status = 'published' LIMIT 1`)[0];
+  } else {
+    row = (await getSqliteDb())
+      .prepare("SELECT * FROM posts WHERE slug = ? AND status = 'published' LIMIT 1")
+      .get(slug) as Row | undefined;
+  }
   return row ? normalizeRow(row) : null;
 }
 
 export async function getPostById(id: string) {
-  const row = usePostgres()
-    ? ((await (await getPostgres())`SELECT * FROM posts WHERE id = ${id} LIMIT 1`)[0] as Row | undefined)
-    : ((await getSqliteDb()).prepare("SELECT * FROM posts WHERE id = ? LIMIT 1").get(id) as Row | undefined);
+  let row: Row | undefined;
+  if (usePostgres()) {
+    const db = await getPostgres();
+    row = (await db<Row[]>`SELECT * FROM posts WHERE id = ${id} LIMIT 1`)[0];
+  } else {
+    row = (await getSqliteDb()).prepare("SELECT * FROM posts WHERE id = ? LIMIT 1").get(id) as Row | undefined;
+  }
   return row ? normalizeRow(row) : null;
 }
 
 export async function deletePost(id: string) {
   if (usePostgres()) {
-    await (await getPostgres())`DELETE FROM posts WHERE id = ${id}`;
+    const db = await getPostgres();
+    await db`DELETE FROM posts WHERE id = ${id}`;
   } else {
     (await getSqliteDb()).prepare("DELETE FROM posts WHERE id = ?").run(id);
   }
@@ -620,9 +645,15 @@ async function upsertPostgresPage(input: PageContentInput, sql?: Sql) {
 }
 
 export async function getPageContent(slug: string) {
-  const row = usePostgres()
-    ? ((await (await getPostgres())`SELECT * FROM pages WHERE slug = ${slug} LIMIT 1`)[0] as PageRow | undefined)
-    : ((await getSqliteDb()).prepare("SELECT * FROM pages WHERE slug = ? LIMIT 1").get(slug) as PageRow | undefined);
+  let row: PageRow | undefined;
+  if (usePostgres()) {
+    const db = await getPostgres();
+    row = (await db<PageRow[]>`SELECT * FROM pages WHERE slug = ${slug} LIMIT 1`)[0];
+  } else {
+    row = (await getSqliteDb()).prepare("SELECT * FROM pages WHERE slug = ? LIMIT 1").get(slug) as
+      | PageRow
+      | undefined;
+  }
 
   return row ? normalizePageRow(row) : null;
 }
