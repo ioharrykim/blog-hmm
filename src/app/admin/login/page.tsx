@@ -12,11 +12,19 @@ export default function AdminLoginPage({ searchParams }: { searchParams: Promise
         <LoginError searchParams={searchParams} />
         <div className="field">
           <label htmlFor="username">Username</label>
-          <input id="username" name="username" autoComplete="username" required />
+          <input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required />
         </div>
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" autoComplete="current-password" required />
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+          />
         </div>
         <button className="button button--primary" type="submit">
           로그인 →

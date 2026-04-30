@@ -1,27 +1,30 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { adminCredentials } from "@/lib/admin-credentials";
 
 export const adminCookieName = "hm_admin_session";
 
 export function adminUsername() {
-  return process.env.ADMIN_USERNAME || "hyunmin";
+  return adminCredentials().username;
 }
 
 export function adminPassword() {
-  return process.env.ADMIN_PASSWORD || "change-this-before-deploy";
+  return adminCredentials().password;
 }
 
 export function adminSessionSecret() {
-  return process.env.ADMIN_SESSION_SECRET || `${adminUsername()}:${adminPassword()}:hmmhmm`;
+  return adminCredentials().secret;
 }
 
 export function adminSessionToken() {
+  const { username, password, secret } = adminCredentials();
   return createHash("sha256")
-    .update(`${adminUsername()}:${adminPassword()}:${adminSessionSecret()}`)
+    .update(`${username}:${password}:${secret}`)
     .digest("hex");
 }
 
 export function isValidAdminLogin(username: string, password: string) {
-  return username === adminUsername() && password === adminPassword();
+  const credentials = adminCredentials();
+  return username.trim() === credentials.username && password.trim() === credentials.password;
 }

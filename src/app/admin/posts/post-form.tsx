@@ -21,7 +21,7 @@ export function PostForm({ post, categories }: { post?: Post; categories: string
       <div className="field-grid">
         <div className="field">
           <label htmlFor="slug">Slug</label>
-          <input id="slug" name="slug" defaultValue={post?.slug} placeholder="quiet-screen" />
+          <input id="slug" name="slug" defaultValue={post?.slug} placeholder="first-note" />
         </div>
         <div className="field">
           <label>Categories</label>

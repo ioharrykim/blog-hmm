@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { adminCredentials } from "@/lib/admin-credentials";
 
 const cookieName = "hm_admin_session";
 
@@ -20,9 +21,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const username = process.env.ADMIN_USERNAME || "hyunmin";
-  const password = process.env.ADMIN_PASSWORD || "change-this-before-deploy";
-  const secret = process.env.ADMIN_SESSION_SECRET || `${username}:${password}:hmmhmm`;
+  const { username, password, secret } = adminCredentials();
   const expected = await sha256Hex(`${username}:${password}:${secret}`);
   const token = request.cookies.get(cookieName)?.value;
 
