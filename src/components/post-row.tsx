@@ -4,7 +4,7 @@ import type { Post } from "@/lib/posts";
 
 export function PostRow({ post }: { post: Post }) {
   return (
-    <Link className="row" href={`/posts/${post.slug}`}>
+    <Link className="row" href={`/posts/${post.slug}`} prefetch={false}>
       <span className="row__copy">
         <span className="row__title">
           <span className="row__titleIn">{post.title}</span>

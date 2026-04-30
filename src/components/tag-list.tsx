@@ -6,7 +6,7 @@ export function TagList({ tags }: { tags: string[] }) {
   return (
     <div className="tag-list" aria-label="카테고리">
       {tags.map((tag) => (
-        <Link href={`/archive?category=${encodeURIComponent(tag)}`} key={tag}>
+        <Link href={`/archive?category=${encodeURIComponent(tag)}`} key={tag} prefetch={false}>
           {tag}
         </Link>
       ))}

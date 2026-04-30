@@ -74,7 +74,7 @@ export default async function PostPage({ params }: Props) {
       <Markdown body={post.body} />
       <TagList tags={post.tags} />
       <ArticleAd />
-      <Link className="read__back" href="/">
+      <Link className="read__back" href="/" prefetch={false}>
         ← 목록으로
       </Link>
     </article>

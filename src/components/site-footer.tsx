@@ -6,9 +6,15 @@ export function SiteFooter() {
     <footer className="foot">
       <span>© 2026 {site.name}</span>
       <span className="foot__links">
-        <Link href="/privacy">Privacy</Link>
-        <Link href="/contact">Contact</Link>
-        <Link href="/rss.xml">RSS</Link>
+        <Link href="/privacy" prefetch={false}>
+          Privacy
+        </Link>
+        <Link href="/contact" prefetch={false}>
+          Contact
+        </Link>
+        <Link href="/rss.xml" prefetch={false}>
+          RSS
+        </Link>
       </span>
     </footer>
   );

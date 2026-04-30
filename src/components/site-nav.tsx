@@ -10,13 +10,13 @@ const links = [
 export function SiteNav() {
   return (
     <nav className="nav" aria-label="주요 메뉴">
-      <Link className="nav__name" href="/">
+      <Link className="nav__name" href="/" prefetch={false}>
         hmmhmm
       </Link>
       <div className="nav__links">
         {links.map((link) => {
           return (
-            <Link key={link.href} className="nav__lnk" href={link.href}>
+            <Link key={link.href} className="nav__lnk" href={link.href} prefetch={false}>
               {link.label}
             </Link>
           );
