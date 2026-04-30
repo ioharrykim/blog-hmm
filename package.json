@@ -10,9 +10,9 @@
     "db:reset": "node scripts/reset-db.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.3.3",
     "next": "latest",
-    "postgres": "^3.4.9",
     "react": "latest",
     "react-dom": "latest",
     "react-markdown": "latest",

@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import type { Sql } from "postgres";
+import type { NeonQueryFunction } from "@neondatabase/serverless";
 import { readingMinutes } from "@/lib/date";
 import { slugify } from "@/lib/slug";
 
@@ -96,9 +96,11 @@ type SqliteDatabase = {
   };
 };
 
+type PostgresClient = NeonQueryFunction<false, false>;
+
 let sqliteDb: SqliteDatabase | null = null;
 let sqliteInitialized = false;
-let pg: Sql | null = null;
+let pg: PostgresClient | null = null;
 let pgInitialized = false;
 
 const seedPosts: PostInput[] = [
@@ -245,11 +247,11 @@ async function getSqliteDb() {
 
 async function getPostgres() {
   if (!pg) {
-    const postgres = (await import("postgres")).default;
-    pg = postgres(process.env.DATABASE_URL!, {
-      max: 3,
-      idle_timeout: 20,
-      connect_timeout: 10
+    const { neon } = await import("@neondatabase/serverless");
+    pg = neon(process.env.DATABASE_URL!, {
+      fetchOptions: {
+        cache: "no-store"
+      }
     });
   }
 
@@ -307,8 +309,8 @@ async function seedSqliteIfEmpty(database: SqliteDatabase) {
   }
 }
 
-async function seedPostgresIfEmpty(sql: Sql) {
-  const [count] = await sql<{ count: string }[]>`SELECT COUNT(*) as count FROM posts`;
+async function seedPostgresIfEmpty(sql: PostgresClient) {
+  const [count] = (await sql`SELECT COUNT(*) as count FROM posts`) as { count: string }[];
   if (Number(count.count) > 0 || process.env.DISABLE_BLOG_SEED === "true") return;
 
   for (const post of seedPosts) {
@@ -325,8 +327,8 @@ async function seedSqlitePagesIfEmpty(database: SqliteDatabase) {
   }
 }
 
-async function seedPostgresPagesIfEmpty(sql: Sql) {
-  const [count] = await sql<{ count: string }[]>`SELECT COUNT(*) as count FROM pages`;
+async function seedPostgresPagesIfEmpty(sql: PostgresClient) {
+  const [count] = (await sql`SELECT COUNT(*) as count FROM pages`) as { count: string }[];
   if (Number(count.count) > 0 || process.env.DISABLE_BLOG_SEED === "true") return;
 
   for (const page of seedPages) {
@@ -374,7 +376,7 @@ async function ensureUniqueSlug(base: string, currentId?: string) {
 
     if (usePostgres()) {
       const db = await getPostgres();
-      row = (await db<{ id: string }[]>`SELECT id FROM posts WHERE slug = ${candidate} LIMIT 1`)[0];
+      row = (await db`SELECT id FROM posts WHERE slug = ${candidate} LIMIT 1`)[0] as { id: string } | undefined;
     } else {
       row = (await getSqliteDb()).prepare("SELECT id FROM posts WHERE slug = ? LIMIT 1").get(candidate) as
         | { id: string }
@@ -455,11 +457,11 @@ async function upsertSqlitePost(input: PostInput, database?: SqliteDatabase) {
   return (await getPostById(post.id))!;
 }
 
-async function upsertPostgresPost(input: PostInput, sql?: Sql) {
+async function upsertPostgresPost(input: PostInput, sql?: PostgresClient) {
   const db = sql || (await getPostgres());
   const post = await cleanInput(input);
 
-  const [row] = await db<Row[]>`
+  const [row] = (await db`
     INSERT INTO posts (
       id, title, slug, excerpt, body, tags, status,
       created_at, updated_at, published_at, seo_title, seo_description, og_image
@@ -481,7 +483,7 @@ async function upsertPostgresPost(input: PostInput, sql?: Sql) {
       seo_description = EXCLUDED.seo_description,
       og_image = EXCLUDED.og_image
     RETURNING *
-  `;
+  `) as Row[];
 
   return normalizeRow(row);
 }
@@ -494,7 +496,7 @@ export async function getAllPosts() {
   let rows: Row[];
   if (usePostgres()) {
     const db = await getPostgres();
-    rows = await db<Row[]>`SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC`;
+    rows = (await db`SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC`) as Row[];
   } else {
     rows = (await getSqliteDb())
       .prepare("SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC")
@@ -507,7 +509,7 @@ export async function getPublishedPosts() {
   let rows: Row[];
   if (usePostgres()) {
     const db = await getPostgres();
-    rows = await db<Row[]>`SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC`;
+    rows = (await db`SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC`) as Row[];
   } else {
     rows = (await getSqliteDb())
       .prepare("SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC")
@@ -520,7 +522,9 @@ export async function getPostBySlug(slug: string) {
   let row: Row | undefined;
   if (usePostgres()) {
     const db = await getPostgres();
-    row = (await db<Row[]>`SELECT * FROM posts WHERE slug = ${slug} AND status = 'published' LIMIT 1`)[0];
+    row = (await db`SELECT * FROM posts WHERE slug = ${slug} AND status = 'published' LIMIT 1`)[0] as
+      | Row
+      | undefined;
   } else {
     row = (await getSqliteDb())
       .prepare("SELECT * FROM posts WHERE slug = ? AND status = 'published' LIMIT 1")
@@ -533,7 +537,7 @@ export async function getPostById(id: string) {
   let row: Row | undefined;
   if (usePostgres()) {
     const db = await getPostgres();
-    row = (await db<Row[]>`SELECT * FROM posts WHERE id = ${id} LIMIT 1`)[0];
+    row = (await db`SELECT * FROM posts WHERE id = ${id} LIMIT 1`)[0] as Row | undefined;
   } else {
     row = (await getSqliteDb()).prepare("SELECT * FROM posts WHERE id = ? LIMIT 1").get(id) as Row | undefined;
   }
@@ -618,12 +622,12 @@ async function upsertSqlitePage(input: PageContentInput, database?: SqliteDataba
   return (await getPageContent(input.slug))!;
 }
 
-async function upsertPostgresPage(input: PageContentInput, sql?: Sql) {
+async function upsertPostgresPage(input: PageContentInput, sql?: PostgresClient) {
   const db = sql || (await getPostgres());
   const now = new Date().toISOString();
   const title = input.title.trim() || "Untitled";
   const lede = input.lede.trim();
-  const [row] = await db<PageRow[]>`
+  const [row] = (await db`
     INSERT INTO pages (
       slug, kicker, title, lede, body, seo_title, seo_description, updated_at
     ) VALUES (
@@ -639,7 +643,7 @@ async function upsertPostgresPage(input: PageContentInput, sql?: Sql) {
       seo_description = EXCLUDED.seo_description,
       updated_at = EXCLUDED.updated_at
     RETURNING *
-  `;
+  `) as PageRow[];
 
   return normalizePageRow(row);
 }
@@ -648,7 +652,7 @@ export async function getPageContent(slug: string) {
   let row: PageRow | undefined;
   if (usePostgres()) {
     const db = await getPostgres();
-    row = (await db<PageRow[]>`SELECT * FROM pages WHERE slug = ${slug} LIMIT 1`)[0];
+    row = (await db`SELECT * FROM pages WHERE slug = ${slug} LIMIT 1`)[0] as PageRow | undefined;
   } else {
     row = (await getSqliteDb()).prepare("SELECT * FROM pages WHERE slug = ? LIMIT 1").get(slug) as
       | PageRow
