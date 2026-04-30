@@ -758,6 +758,9 @@ export function postToFormInput(formData: FormData): PostInput {
   const intent = String(formData.get("intent") || "save");
   const status = intent === "publish" ? "published" : String(formData.get("status") || "draft");
   const publishedAtRaw = String(formData.get("publishedAt") || "").trim();
+  const parsedPublishedAt = publishedAtRaw ? new Date(publishedAtRaw) : null;
+  const publishedAt =
+    parsedPublishedAt && !Number.isNaN(parsedPublishedAt.getTime()) ? parsedPublishedAt.toISOString() : null;
 
   return {
     id: String(formData.get("id") || "") || undefined,
@@ -767,7 +770,7 @@ export function postToFormInput(formData: FormData): PostInput {
     body: String(formData.get("body") || ""),
     tags,
     status: status === "published" ? "published" : "draft",
-    publishedAt: publishedAtRaw ? new Date(publishedAtRaw).toISOString() : null,
+    publishedAt,
     seoTitle: String(formData.get("seoTitle") || ""),
     seoDescription: String(formData.get("seoDescription") || ""),
     ogImage: String(formData.get("ogImage") || "")

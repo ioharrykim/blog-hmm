@@ -43,6 +43,11 @@ export async function uploadImage(file: FormDataEntryValue | null) {
     return blob.url;
   }
 
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    console.warn("Image upload skipped because BLOB_READ_WRITE_TOKEN is not configured.");
+    return null;
+  }
+
   const uploadDir = join(process.cwd(), "public", "uploads");
   await mkdir(uploadDir, { recursive: true });
   await writeFile(join(uploadDir, filename), bytes);

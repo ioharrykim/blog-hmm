@@ -1,14 +1,14 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/login/actions";
 import { uploadImage } from "@/lib/media";
 import { deletePost, pageToFormInput, postToFormInput, upsertPageContent, upsertPost } from "@/lib/posts";
 
 function revalidatePublic() {
-  updateTag("public-posts");
-  updateTag("public-pages");
+  revalidateTag("public-posts", "max");
+  revalidateTag("public-pages", "max");
   revalidatePath("/");
   revalidatePath("/posts");
   revalidatePath("/archive");
@@ -43,7 +43,7 @@ export async function deletePostAction(formData: FormData) {
 
 export async function savePageAction(formData: FormData) {
   const page = await upsertPageContent(pageToFormInput(formData));
-  updateTag("public-pages");
+  revalidateTag("public-pages", "max");
   revalidatePath(`/${page.slug}`);
   revalidatePath("/admin");
   redirect(`/admin/pages/${page.slug}`);
