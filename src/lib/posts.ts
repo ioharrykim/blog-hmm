@@ -184,6 +184,8 @@ const seedPages: PageContentInput[] = [
   }
 ];
 
+const publicDbTimeoutMs = Number(process.env.PUBLIC_DB_TIMEOUT_MS || 3500);
+
 function usePostgres() {
   return Boolean(process.env.DATABASE_URL);
 }
@@ -365,6 +367,79 @@ function normalizePageRow(row: PageRow): PageContent {
     seoDescription: row.seo_description || row.lede,
     updatedAt: row.updated_at
   };
+}
+
+function fallbackPost(input: PostInput): Post {
+  const timestamp = input.publishedAt || new Date().toISOString();
+  return {
+    id: input.id || input.slug || input.title,
+    title: input.title,
+    slug: input.slug || slugify(input.title),
+    excerpt: input.excerpt,
+    body: input.body,
+    tags: input.tags,
+    status: input.status,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    publishedAt: input.publishedAt || timestamp,
+    seoTitle: input.seoTitle || input.title,
+    seoDescription: input.seoDescription || input.excerpt,
+    ogImage: input.ogImage || "/og-default.svg"
+  };
+}
+
+function fallbackPublishedPosts() {
+  return seedPosts.filter((post) => post.status === "published").map(fallbackPost);
+}
+
+function fallbackPageContent(slug: string) {
+  const page = seedPages.find((page) => page.slug === slug);
+  if (!page) return null;
+  return {
+    ...page,
+    seoTitle: page.seoTitle || page.title,
+    seoDescription: page.seoDescription || page.lede,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function tagCounts(posts: Post[]) {
+  const counts = new Map<string, number>();
+  for (const post of posts) {
+    for (const tag of post.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => a.tag.localeCompare(b.tag, "ko"));
+}
+
+function archivesFromPosts(posts: Post[], category?: string | null) {
+  const groups = new Map<string, Post[]>();
+  const filtered = category ? posts.filter((post) => post.tags.includes(decodeURIComponent(category))) : posts;
+
+  for (const post of filtered) {
+    const key = (post.publishedAt || post.updatedAt).slice(0, 7);
+    groups.set(key, [...(groups.get(key) || []), post]);
+  }
+  return Array.from(groups.entries()).map(([month, posts]) => ({ month, posts }));
+}
+
+async function publicFallback<T>(label: string, fallback: T, load: () => Promise<T>) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      load(),
+      new Promise<T>((resolve) => {
+        timeout = setTimeout(() => resolve(fallback), publicDbTimeoutMs);
+      })
+    ]);
+  } catch (error) {
+    console.error(`Public content fallback used for ${label}`, error);
+    pgInitialized = false;
+    return fallback;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 async function ensureUniqueSlug(base: string, currentId?: string) {
@@ -554,23 +629,11 @@ export async function deletePost(id: string) {
 }
 
 export async function getPublishedTags() {
-  const counts = new Map<string, number>();
-  for (const post of await getPublishedPosts()) {
-    for (const tag of post.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => a.tag.localeCompare(b.tag, "ko"));
+  return tagCounts(await getPublishedPosts());
 }
 
 export async function getAllCategories() {
-  const counts = new Map<string, number>();
-  for (const post of await getAllPosts()) {
-    for (const tag of post.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => a.tag.localeCompare(b.tag, "ko"));
+  return tagCounts(await getAllPosts());
 }
 
 export async function getPostsByTag(tag: string) {
@@ -578,16 +641,29 @@ export async function getPostsByTag(tag: string) {
 }
 
 export async function getArchives(category?: string | null) {
-  const groups = new Map<string, Post[]>();
-  const posts = category
-    ? (await getPublishedPosts()).filter((post) => post.tags.includes(decodeURIComponent(category)))
-    : await getPublishedPosts();
+  return archivesFromPosts(await getPublishedPosts(), category);
+}
 
-  for (const post of posts) {
-    const key = (post.publishedAt || post.updatedAt).slice(0, 7);
-    groups.set(key, [...(groups.get(key) || []), post]);
-  }
-  return Array.from(groups.entries()).map(([month, posts]) => ({ month, posts }));
+export async function getPublicPublishedPosts() {
+  return publicFallback("published posts", fallbackPublishedPosts(), getPublishedPosts);
+}
+
+export async function getPublicPublishedTags() {
+  return publicFallback("published tags", tagCounts(fallbackPublishedPosts()), getPublishedTags);
+}
+
+export async function getPublicPostsByTag(tag: string) {
+  const fallback = fallbackPublishedPosts().filter((post) => post.tags.includes(decodeURIComponent(tag)));
+  return publicFallback("tagged posts", fallback, () => getPostsByTag(tag));
+}
+
+export async function getPublicPostBySlug(slug: string) {
+  const fallback = fallbackPublishedPosts().find((post) => post.slug === decodeURIComponent(slug)) || null;
+  return publicFallback("post detail", fallback, () => getPostBySlug(slug));
+}
+
+export async function getPublicArchives(category?: string | null) {
+  return publicFallback("archives", archivesFromPosts(fallbackPublishedPosts(), category), () => getArchives(category));
 }
 
 async function upsertSqlitePage(input: PageContentInput, database?: SqliteDatabase) {
@@ -660,6 +736,10 @@ export async function getPageContent(slug: string) {
   }
 
   return row ? normalizePageRow(row) : null;
+}
+
+export async function getPublicPageContent(slug: string) {
+  return publicFallback("page content", fallbackPageContent(slug), () => getPageContent(slug));
 }
 
 export async function upsertPageContent(input: PageContentInput) {

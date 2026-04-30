@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostRow } from "@/components/post-row";
 import { pageMetadata } from "@/lib/metadata";
-import { getPostsByTag, getPublishedTags } from "@/lib/posts";
+import { getPublicPostsByTag, getPublicPublishedTags } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +23,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TagPage({ params }: Props) {
   const { tag } = await params;
   const decoded = decodeURIComponent(tag);
-  const knownTags = (await getPublishedTags()).map((item) => item.tag);
+  const knownTags = (await getPublicPublishedTags()).map((item) => item.tag);
   if (!knownTags.includes(decoded)) notFound();
 
-  const posts = await getPostsByTag(decoded);
+  const posts = await getPublicPostsByTag(decoded);
 
   return (
     <main className="home">

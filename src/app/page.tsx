@@ -1,14 +1,14 @@
 import { PostRow } from "@/components/post-row";
 import { TagList } from "@/components/tag-list";
 import { pageMetadata } from "@/lib/metadata";
-import { getPublishedPosts, getPublishedTags } from "@/lib/posts";
+import { getPublicPublishedPosts, getPublicPublishedTags } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
 export const metadata = pageMetadata();
 
 export default async function HomePage() {
-  const posts = await getPublishedPosts();
-  const tags = (await getPublishedTags()).map((item) => item.tag);
+  const posts = await getPublicPublishedPosts();
+  const tags = (await getPublicPublishedTags()).map((item) => item.tag);
 
   return (
     <main className="home">

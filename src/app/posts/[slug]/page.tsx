@@ -6,7 +6,7 @@ import { Markdown } from "@/components/markdown";
 import { TagList } from "@/components/tag-list";
 import { formatDate, readingMinutes } from "@/lib/date";
 import { pageMetadata } from "@/lib/metadata";
-import { getPostBySlug } from "@/lib/posts";
+import { getPublicPostBySlug } from "@/lib/posts";
 import { absoluteUrl, ogImageUrl, site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getPostBySlug(decodeURIComponent(slug));
+  const post = await getPublicPostBySlug(decodeURIComponent(slug));
   if (!post) return pageMetadata({ title: "글을 찾을 수 없습니다", path: `/posts/${slug}` });
 
   return pageMetadata({
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PostPage({ params }: Props) {
   const { slug } = await params;
-  const post = await getPostBySlug(decodeURIComponent(slug));
+  const post = await getPublicPostBySlug(decodeURIComponent(slug));
   if (!post) notFound();
 
   const jsonLd = {

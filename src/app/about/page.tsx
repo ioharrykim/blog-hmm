@@ -1,11 +1,11 @@
 import { Markdown } from "@/components/markdown";
 import { pageMetadata } from "@/lib/metadata";
-import { getPageContent } from "@/lib/posts";
+import { getPublicPageContent } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
-  const page = await getPageContent("about");
+  const page = await getPublicPageContent("about");
   return pageMetadata({
     title: page?.seoTitle || "About",
     description: page?.seoDescription || "hmmhmm과 글쓴이 Hyunmin에 대하여.",
@@ -14,7 +14,7 @@ export async function generateMetadata() {
 }
 
 export default async function AboutPage() {
-  const page = await getPageContent("about");
+  const page = await getPublicPageContent("about");
 
   return (
     <main className="page">

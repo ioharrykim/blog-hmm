@@ -1,6 +1,6 @@
 import { PostRow } from "@/components/post-row";
 import { pageMetadata } from "@/lib/metadata";
-import { getPublishedPosts } from "@/lib/posts";
+import { getPublicPublishedPosts } from "@/lib/posts";
 
 export const dynamic = "force-dynamic";
 export const metadata = pageMetadata({
@@ -10,7 +10,7 @@ export const metadata = pageMetadata({
 });
 
 export default async function PostsPage() {
-  const posts = await getPublishedPosts();
+  const posts = await getPublicPublishedPosts();
 
   return (
     <main className="home">
