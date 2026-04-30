@@ -20,9 +20,11 @@ export default async function PostsPage() {
         </p>
       </section>
       <section className="home__list" aria-label="글 목록">
-        {posts.map((post) => (
-          <PostRow key={post.id} post={post} />
-        ))}
+        {posts.length === 0 ? (
+          <div className="empty">아직 발행된 글이 없습니다.</div>
+        ) : (
+          posts.map((post) => <PostRow key={post.id} post={post} />)
+        )}
       </section>
     </main>
   );
